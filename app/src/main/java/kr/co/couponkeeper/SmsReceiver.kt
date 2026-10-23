@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -14,9 +16,10 @@ class SmsReceiver : BroadcastReceiver() {
             val body = sms.messageBody ?: continue
             val expiry = CouponParser.findExpiry(body) ?: continue
             val title = CouponParser.findTitle(body)
-            CouponStore.save(context, title, body, expiry)
-            Notifier.show(context, title, "쿠폰 만료일: ${SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date(expiry))}")
+            val coupon = CouponStore.save(context, title, body, expiry) ?: continue
+            Notifier.show(context, title, "쿠폰이 저장됐습니다.", coupon.id)
             CalendarHelper.addIfPermitted(context, title, body, expiry)
+            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<CouponSyncWorker>().build())
         }
     }
 }
