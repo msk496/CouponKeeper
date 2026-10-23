@@ -36,7 +36,7 @@ class CouponSyncWorker(context: Context, params: WorkerParameters) : Worker(cont
         if (endpoint.isBlank() || key.isBlank()) return Result.success()
         return try {
             val outgoing = inputData.getString("coupon_json")
-            if (outgoing != null) request("POST", endpoint, key, JSONObject(outgoing).put("key", key).let { JSONObject().put("key",key).put("action","upsert").put("coupon",JSONObject(outgoing)) })
+            if (outgoing != null) request("POST", endpoint, key, JSONObject().put("key", key).put("action", "upsert").put("coupon", JSONObject(outgoing)))
             val response = JSONObject(request("GET", endpoint, key, null))
             val array = response.optJSONArray("coupons") ?: JSONArray()
             val existing = CouponStore.all(applicationContext).associateBy { it.id }
