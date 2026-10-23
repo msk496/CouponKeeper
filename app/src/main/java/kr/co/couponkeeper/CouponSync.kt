@@ -18,6 +18,7 @@ object CouponSync {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("endpoint", endpoint.trim()).putString("key", key.trim()).apply()
         val request = PeriodicWorkRequestBuilder<CouponSyncWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork("coupon-periodic-sync", ExistingPeriodicWorkPolicy.UPDATE, request)
+        CouponStore.all(context).forEach { enqueue(context, it) }
         enqueue(context)
     }
     fun enqueue(context: Context, coupon: Coupon? = null) {
@@ -47,7 +48,11 @@ class CouponSyncWorker(context: Context, params: WorkerParameters) : Worker(cont
                 if (before == null && !coupon.used) {
                     val date = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date(coupon.expiry))
                     Notifier.show(applicationContext, "공유 쿠폰 등록", "${coupon.title} · 만료일 $date", coupon.id)
-                } else if (before != null && !before.used && coupon.used) Notifier.cancel(applicationContext, coupon.id)
+                } else if (before != null && !before.used && coupon.used) {
+                    Notifier.cancel(applicationContext, coupon.id)
+                    CalendarHelper.removeForCoupon(applicationContext, coupon.id)
+                }
+                if (before == null && !coupon.used) CalendarHelper.addIfPermitted(applicationContext, coupon.id, coupon.title, coupon.body, coupon.expiry)
                 CouponStore.saveOrUpdate(applicationContext, coupon)
             }
             Result.success()
